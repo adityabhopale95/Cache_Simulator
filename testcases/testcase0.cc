@@ -7,7 +7,7 @@
 
 using namespace std;
 
-/* Test case for cache simulator */ 
+/* Test case for cache simulator */
 
 /* DO NOT MODIFY */
 
@@ -23,7 +23,7 @@ int main(int argc, char **argv){
 				  5, 			//hit time
 				  100, 			//miss penalty
 				  32    		//address width
-				  );     
+				  );
 
 	cout << "FIRST CONFIGURATION" << endl << "------------------------" << endl << endl;
 
@@ -50,7 +50,7 @@ int main(int argc, char **argv){
 
 	cout << "=================================" << endl  << endl;
 	cout << "SECOND CONFIGURATION" << endl << "------------------------" << endl << endl;
-        
+
 	mycache = new cache(128*KB,              //size
                                   2,                    //associativity
                                   256,                  //cache line size
