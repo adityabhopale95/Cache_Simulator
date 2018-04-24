@@ -57,10 +57,10 @@ public:
 	unsigned tag_mask;
 	unsigned get_block_off;
 
-	unsigned get_tag(address_t addr) {return(addr >> (num_blockoff_bits+num_index_bits));}
-	unsigned tag_field(address_t addr) {return(addr >> (num_blockoff_bits));}
-	unsigned index_field(address_t addr) {return((addr >> num_blockoff_bits) & tag_mask);}
-	unsigned block_offset_field(address_t addr) {return (addr & get_block_off);}
+	long long get_tag(address_t addr) {return(addr >> (num_blockoff_bits+num_index_bits));}
+	long long tag_field(address_t addr) {return(addr >> (num_blockoff_bits));}
+	long long index_field(address_t addr) {return((addr >> num_blockoff_bits) & tag_mask);}
+	long long block_offset_field(address_t addr) {return (addr & get_block_off);}
 	// de-allocates the cache simulator
 	~cache();
 

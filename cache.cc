@@ -11,9 +11,9 @@
 using namespace std;
 
 struct cache_struct{
-  ulong tag;
-  ulong tag_store;
-  ulong index;
+  long long tag;
+  long long tag_store;
+  long long index;
   unsigned dirty;
   unsigned valid;
   unsigned LRU_time_stamp;
@@ -101,8 +101,8 @@ void cache::run(unsigned num_entries){
         char *op = strtok (str," ");
 	char *addr = strtok (NULL, " ");
 	address_t address = strtoul(addr, NULL, 16);
-  std::cout << "OP: " << op << '\n';
-  std::cout << "Address: " << hex << address << '\n';
+  //std::cout << "OP: " << op << '\n';
+  //std::cout << "Address: " << hex << address << '\n';
 	/////////////////////////////////////////
   if(strcmp(op,instr[0]) == 0){
     type_ins = 0;
@@ -131,10 +131,17 @@ void cache::run(unsigned num_entries){
       write_misses++;
       if(miss_wr_policy == WRITE_ALLOCATE){
         allocate_cache(address);
-        set_dirty(address);
+        if(hit_wr_policy == WRITE_BACK){
+          set_dirty(address);
+        }
+        else if(hit_wr_policy == WRITE_THROUGH){
+          memory_writes++;
+        }
       }
       else if(miss_wr_policy == NO_WRITE_ALLOCATE){
-        memory_writes++;
+        if(hit_wr_policy == WRITE_THROUGH){
+          memory_writes++;
+        }
       }
     }
   }
@@ -182,8 +189,8 @@ access_type_t cache::write(address_t address){
   access_type_t ret;
   tag = tag_field(address);
   i = index_field(address);
-  std::cout << "Tag is: " << hex << tag << '\n';
-  std::cout << "Index is: " << i << '\n';
+//  std::cout << "Tag is: " << hex << tag << '\n';
+//  std::cout << "Index is: " << i << '\n';
   for(unsigned iter = 0; iter < associativity_cache; iter++){
     if(main_cache[iter][i].tag == tag){
 //      std::cout << "hit_wr_policy: " << hit_wr_policy << '\n';
@@ -261,6 +268,7 @@ unsigned cache::evict_line(unsigned ind){
   unsigned min = time_stamp;
   for(unsigned assoc = 0; assoc < associativity_cache; assoc++){
     if(main_cache[assoc][ind].LRU_time_stamp <= min){
+      min = main_cache[assoc][ind].LRU_time_stamp;
       victim = assoc;
     }
   }
@@ -291,11 +299,11 @@ void cache::print_tag_array(){
     std::cout << "BLOCK " << i << '\n';
     std::cout << setw(7) << "index";
     if(hit_wr_policy == WRITE_BACK)std::cout << setfill(' ') << setw(6) << "dirty";
-    std::cout << setfill(' ') << setw((4+num_tag_bits)) << "tag" << '\n';
+    std::cout << setw((4+(num_tag_bits/8))) << "tag" << '\n';
     for(int j = 0; j < sets; j++){
       if(main_cache[i][j].index != UNDEFINED){std::cout << setw(7) << dec << main_cache[i][j].index;}
-      //if(hit_wr_policy == WRITE_BACK){std::cout << setfill(' ') << setw(6) << dec << main_cache[i][j].dirty;}
-      if(main_cache[i][j].tag_store != UNDEFINED){std::cout << setfill(' ') << setw((4+num_tag_bits)) << "0x" << hex << main_cache[i][j].tag_store << '\n';}
+      if(hit_wr_policy == WRITE_BACK && main_cache[i][j].tag_store != UNDEFINED){std::cout << setfill(' ') << setw(6) << dec << main_cache[i][j].dirty;}
+      if(main_cache[i][j].tag_store != UNDEFINED){std::cout << setw((4+(num_tag_bits/8))) << "0x" << hex << main_cache[i][j].tag_store << '\n';}
     }
     std::cout << '\n';
   }
