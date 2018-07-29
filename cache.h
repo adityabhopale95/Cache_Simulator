@@ -44,6 +44,9 @@ public:
 	);
 	unsigned reads, read_misses, writes, write_misses, memory_accesses, evictions;
 	unsigned type_ins;
+	unsigned time_hit;
+	unsigned penalty_miss;
+	unsigned width_add;
 	unsigned memory_writes, hits;
 	unsigned time_stamp;
 	unsigned size_cache;

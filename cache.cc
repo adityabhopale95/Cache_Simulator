@@ -31,8 +31,7 @@ cache::cache(unsigned size,
       unsigned miss_penalty,
       unsigned address_width
 ){
-	/* edit here */
-  hit_wr_policy = wr_hit_policy;
+	hit_wr_policy = wr_hit_policy;
   miss_wr_policy = wr_miss_policy;
   reads = read_misses = time_stamp = 0;
   writes = write_misses = 0;
@@ -43,6 +42,9 @@ cache::cache(unsigned size,
   associativity_cache = associativity;
   sets = ((size/line_size)/associativity);
   num_blocks = (size/line_size);
+  time_hit = hit_time;
+  penalty_miss = miss_penalty;
+  width_add = address_width;
   num_index_bits = log2(sets);
   num_blockoff_bits = log2(size_block);
   num_tag_bits = address_width - num_index_bits - num_blockoff_bits;
@@ -68,7 +70,19 @@ cache::cache(unsigned size,
 }
 
 void cache::print_configuration(){
-	/* edit here */
+	std::cout << "CACHE CONFIGURATION" << '\n';
+  std::cout << "size = " << (size_cache/1024) << " KB" << '\n';
+  std::cout << "associativity = " << associativity_cache << "-way" << '\n';
+  std::cout << "cache line size = " << size_block << " B" << '\n';
+  std::cout << "write hit policy = ";
+  if(hit_wr_policy == WRITE_BACK) std::cout << "write-back" << '\n';
+  if(hit_wr_policy == WRITE_THROUGH) std::cout << "write-through" << '\n';
+  std::cout << "write miss policy = ";
+  if(miss_wr_policy == WRITE_ALLOCATE) std::cout << "write-allocate" << '\n';
+  if(miss_wr_policy == NO_WRITE_ALLOCATE) std::cout << "no-write-allocate" << '\n';
+  std::cout << "cache hit time = " << time_hit << " CLK" << '\n';
+  std::cout << "cache miss penalty = " << penalty_miss << " CLK" << '\n';
+  std::cout << "memory address width = " << width_add << " bits" << '\n';
 }
 
 cache::~cache(){
@@ -101,9 +115,7 @@ void cache::run(unsigned num_entries){
         char *op = strtok (str," ");
 	char *addr = strtok (NULL, " ");
 	address_t address = strtoul(addr, NULL, 16);
-  //std::cout << "OP: " << op << '\n';
-  //std::cout << "Address: " << hex << address << '\n';
-	/////////////////////////////////////////
+
   if(strcmp(op,instr[0]) == 0){
     type_ins = 0;
     reads++;
@@ -120,7 +132,7 @@ void cache::run(unsigned num_entries){
     type_ins = 1;
     writes++;
     write_type = write(address);
-//    std::cout << "Write type: " << write_type << '\n';
+
     if(write_type == HIT){
       hits++;
       if(hit_wr_policy == WRITE_THROUGH){
@@ -139,15 +151,12 @@ void cache::run(unsigned num_entries){
         }
       }
       else if(miss_wr_policy == NO_WRITE_ALLOCATE){
-        if(hit_wr_policy == WRITE_THROUGH){
-          memory_writes++;
-        }
+        memory_writes++;
       }
     }
   }
   time_stamp++;
   memory_accesses++;
-  ////////////////////////////////////////
 	number_memory_accesses++;
 	if (num_entries!=0 && (number_memory_accesses-first_access)==num_entries)
 		break;
@@ -155,6 +164,10 @@ void cache::run(unsigned num_entries){
 }
 
 void cache::print_statistics(){
+  float miss_rate;
+  float avg_mem_access_time;
+  miss_rate = (float(read_misses)+float(write_misses))/(memory_accesses);
+  avg_mem_access_time = float(time_hit + miss_rate * penalty_miss);
 	cout << "STATISTICS" << endl;
   std::cout << "memory accesses = " << dec << memory_accesses << '\n';
   std::cout << "read = " << reads << '\n';
@@ -163,7 +176,7 @@ void cache::print_statistics(){
   std::cout << "write misses = " << write_misses << '\n';
   std::cout << "evictions = " << evictions << '\n';
   std::cout << "memory writes = " << dec << memory_writes << '\n';
-  std::cout << "average memory access time = " << '\n';
+  std::cout << "average memory access time = " << avg_mem_access_time << '\n';
 }
 
 access_type_t cache::read(address_t address){
@@ -189,13 +202,9 @@ access_type_t cache::write(address_t address){
   access_type_t ret;
   tag = tag_field(address);
   i = index_field(address);
-//  std::cout << "Tag is: " << hex << tag << '\n';
-//  std::cout << "Index is: " << i << '\n';
   for(unsigned iter = 0; iter < associativity_cache; iter++){
     if(main_cache[iter][i].tag == tag){
-//      std::cout << "hit_wr_policy: " << hit_wr_policy << '\n';
       if(hit_wr_policy == WRITE_BACK){
-//        std::cout << "Setting dirty bit" << '\n';
         main_cache[iter][i].dirty = 1;
       }
       ret = HIT;
@@ -230,9 +239,6 @@ void cache::allocate_cache(address_t address){
   tag = tag_field(address);
   i = index_field(address);
   tag_store = get_tag(address);
-//  std::cout << "Tag in allocation: " << tag << '\n';
-//  std::cout << "Index in allocation; " << i << '\n';
-//  std::cout << "Tag to be stored: " << tag_store << '\n';
   for(unsigned iter = 0; iter < associativity_cache; iter++){
     if(main_cache[iter][i].valid == 0){
       update_LRU(iter,i);
@@ -251,7 +257,6 @@ void cache::allocate_cache(address_t address){
 
   if(if_evict == 1){
     evictions++;
-//    std::cout << "************Evicting***********" << '\n';
     allocate_aft_eviction = evict_line(i);
     update_LRU(allocate_aft_eviction,i);
     main_cache[allocate_aft_eviction][i].valid = 1;
@@ -272,12 +277,8 @@ unsigned cache::evict_line(unsigned ind){
       victim = assoc;
     }
   }
-//  std::cout << "Victim: " << victim << '\n';
-//  std::cout << "Type of instruction: " << type_ins << '\n';
-//    std::cout << "This is a write instruction" << '\n';
   if(main_cache[victim][ind].dirty == 1){
     main_cache[victim][ind].dirty = 0;
-//    std::cout << "Incrementing memory accesses" << '\n';
     memory_writes++;
   }
   main_cache[victim][ind].valid = 0;
@@ -296,16 +297,14 @@ void cache::update_LRU(unsigned block, unsigned set){
 void cache::print_tag_array(){
 	cout << "TAG ARRAY" << endl;
 	for(int i = 0; i < associativity_cache; i++){
-    std::cout << "BLOCK " << i << '\n';
-    std::cout << setw(7) << "index";
-    if(hit_wr_policy == WRITE_BACK)std::cout << setfill(' ') << setw(6) << "dirty";
-    std::cout << setw((4+(num_tag_bits/8))) << "tag" << '\n';
+    std::cout << "BLOCKS " << i << '\n';
+    std::cout << setfill(' ') << setw(7) << "index";
+    if(hit_wr_policy == WRITE_BACK)std::cout << setw(6) << "dirty";
+    std::cout << setw((4+(num_tag_bits/4))) << "tag" << '\n';
     for(int j = 0; j < sets; j++){
-      if(main_cache[i][j].index != UNDEFINED){std::cout << setw(7) << dec << main_cache[i][j].index;}
-      if(hit_wr_policy == WRITE_BACK && main_cache[i][j].tag_store != UNDEFINED){std::cout << setfill(' ') << setw(6) << dec << main_cache[i][j].dirty;}
-      if(main_cache[i][j].tag_store != UNDEFINED){std::cout << setw((4+(num_tag_bits/8))) << "0x" << hex << main_cache[i][j].tag_store << '\n';}
+      if(main_cache[i][j].index != UNDEFINED){std::cout << setfill(' ') << setw(7) << dec << main_cache[i][j].index;}
+      if(hit_wr_policy == WRITE_BACK && main_cache[i][j].tag_store != UNDEFINED){std::cout << setw(6) << dec << main_cache[i][j].dirty;}
+      if(main_cache[i][j].tag_store != UNDEFINED){std::cout << setw(4) << "0x" << hex << main_cache[i][j].tag_store << '\n';}
     }
-    std::cout << '\n';
   }
-  std::cout << '\n';
 }
